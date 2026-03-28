@@ -1,0 +1,40 @@
+# Etch API Snapshot Test - GitLab CI Template
+#
+# Usage: Include this template in your .gitlab-ci.yml:
+#
+#   include:
+#     - project: 'ojuschugh1/etch'
+#       file: '.gitlab/etch-test.yml'
+#
+#   etch-snapshot-test:
+#     extends: .etch-test
+#     variables:
+#       ETCH_VERSION: "v1.0.0"
+#       ETCH_PORT: "8080"
+#       ETCH_SNAP_DIR: ".etch/snapshots"
+
+.etch-test:
+  variables:
+    ETCH_VERSION: ""
+    ETCH_PORT: "8080"
+    ETCH_SNAP_DIR: ".etch/snapshots"
+  before_script:
+    - |
+      if [ -n "${ETCH_VERSION}" ]; then
+        OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
+        ARCH="$(uname -m)"
+        case "${ARCH}" in
+          x86_64)  ARCH="amd64" ;;
+          aarch64) ARCH="arm64" ;;
+        esac
+        URL="https://github.com/ojuschugh1/etch/releases/download/${ETCH_VERSION}/etch-${OS}-${ARCH}"
+        echo "Downloading Etch ${URL}"
+        curl -fsSL -o /usr/local/bin/etch "${URL}"
+        chmod +x /usr/local/bin/etch
+      else
+        echo "No version specified, building from source"
+        go build -o /usr/local/bin/etch ./cmd/etch
+      fi
+      etch version
+  script:
+    - etch test --port "${ETCH_PORT}" --snap-dir "${ETCH_SNAP_DIR}" --ci

@@ -1,0 +1,15 @@
+# Ignore noisy headers that change on every request
+headers.Date
+headers.X-Request-Id
+headers.X-Amzn-Trace-Id
+headers.X-Amzn-RequestId
+
+# Ignore dynamic body fields
+body.timestamp
+body.created_at
+body.updated_at
+body.request_id
+
+# Ignore everything under a noisy subtree
+body.meta.*
+body.debug.*

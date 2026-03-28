@@ -1,0 +1,63 @@
+name: Etch PR Check
+
+# use pull_request_target so the workflow has write permissions
+# even on PRs from forks. The checkout still uses the PR head ref
+# for testing the actual changes.
+on:
+  pull_request_target:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  etch-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Build etch
+        run: make build
+
+      - name: Run etch test
+        id: etch
+        continue-on-error: true
+        run: |
+          ./etch test --ci --snap-dir .etch/snapshots 2>&1 | tee /tmp/etch-output.txt
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
+
+      - name: Get diff output
+        id: diff
+        run: |
+          DIFF=$(./etch diff --ci --snap-dir .etch/snapshots 2>&1 || true)
+          echo "output<<EOF" >> $GITHUB_OUTPUT
+          echo "$DIFF" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const diff = `${{ steps.diff.outputs.output }}`;
+            const exitCode = '${{ steps.etch.outputs.exit_code }}';
+
+            let body;
+            if (!diff || diff.includes('No pending diffs')) {
+              body = '## Etch API Snapshot Test\n\n:white_check_mark: No API changes detected.';
+            } else {
+              body = `## Etch API Snapshot Test\n\n:warning: API changes detected:\n\n\`\`\`\n${diff}\n\`\`\`\n\nRun \`etch approve\` to accept these changes.`;
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });

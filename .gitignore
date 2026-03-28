@@ -1,0 +1,18 @@
+# build artifacts
+/etch
+dist/
+build.log
+
+# runtime data
+.etch/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# editor files
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
